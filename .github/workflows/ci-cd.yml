@@ -47,8 +47,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache-dependency-path: backend/pom.xml
-          cache: maven
+
 
       - name: Tests backend
         working-directory: ./backend
