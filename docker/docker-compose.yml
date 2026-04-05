@@ -1,0 +1,141 @@
+
+services:
+
+  # ===== FRONTEND REACT =====
+  frontend:
+    build: ../frontend
+    container_name: uaszgpt-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - uaszgpt-network
+    restart: unless-stopped
+
+  # ===== BACKEND SPRING BOOT =====
+  backend:
+    build: ../backend
+    container_name: uaszgpt-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/uaszgpt
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      IA_ENGINE_URL: http://ia-engine:8000
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - uaszgpt-network
+    restart: unless-stopped
+
+  # ===== MOTEUR IA PYTHON =====
+  ia-engine:
+    build: ../ia-engine
+    container_name: uaszgpt-ia
+    ports:
+      - "8000:8000"
+    environment:
+      CHROMA_HOST: chromadb
+      REDIS_HOST: redis
+      DB_HOST: mysql
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      - chromadb
+      - redis
+    volumes:
+      - ia-models:/app/models
+    networks:
+      - uaszgpt-network
+    restart: unless-stopped
+
+  # ===== MYSQL =====
+  mysql:
+    image: mysql:8.0
+    container_name: uaszgpt-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: uaszgpt
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - uaszgpt-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===== REDIS (cache + sessions) =====
+  redis:
+    image: redis:7.2-alpine
+    container_name: uaszgpt-redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - uaszgpt-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # ===== CHROMADB (vecteurs IA) =====
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: uaszgpt-chroma
+    volumes:
+      - chroma-data:/chroma/chroma
+    networks:
+      - uaszgpt-network
+    restart: unless-stopped
+
+  # ===== MONITORING : PROMETHEUS =====
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: uaszgpt-prometheus
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - uaszgpt-network
+    restart: unless-stopped
+
+  # ===== MONITORING : GRAFANA =====
+  grafana:
+    image: grafana/grafana:latest
+    container_name: uaszgpt-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - uaszgpt-network
+    restart: unless-stopped
+
+# ===== VOLUMES PERSISTANTS =====
+volumes:
+  mysql-data:
+  redis-data:
+  chroma-data:
+  ia-models:
+  grafana-data:
+
+# ===== RÉSEAU INTERNE =====
+networks:
+  uaszgpt-network:
+    driver: bridge
