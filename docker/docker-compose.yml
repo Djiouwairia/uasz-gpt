@@ -1,6 +1,26 @@
 
 services:
 
+
+  # ===== MONITORING : NODE EXPORTER =====
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: uaszgpt-node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    networks:
+      - uaszgpt-network
+    restart: unless-stopped
+
   # ===== FRONTEND REACT =====
   frontend:
     build: ../frontend
@@ -121,8 +141,14 @@ services:
       - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_DOMAIN: ${EC2_HOST}
+      GF_SMTP_ENABLED: "false"
     volumes:
       - grafana-data:/var/lib/grafana
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
     networks:
       - uaszgpt-network
     restart: unless-stopped
@@ -139,3 +165,5 @@ volumes:
 networks:
   uaszgpt-network:
     driver: bridge
+
+
