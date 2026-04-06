@@ -151,6 +151,7 @@ jobs:
 
       - name: Build et push IA engine
         run: |
+          set -x  ← ajoute cette ligne en premier
           docker build -t $ECR_REGISTRY/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }} ./ia-engine
           docker tag $ECR_REGISTRY/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }} $ECR_REGISTRY/uaszgpt/ia-engine:latest
           docker push $ECR_REGISTRY/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }}
