@@ -122,18 +122,19 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: eu-north-1
 
       - name: Login vers ECR
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build et push backend
         run: |
           if [ -f "backend/pom.xml" ]; then
-            docker build -t $ECR_REGISTRY/uaszgpt/backend:${{ steps.tag.outputs.tag }} ./backend
-            docker tag $ECR_REGISTRY/uaszgpt/backend:${{ steps.tag.outputs.tag }} $ECR_REGISTRY/uaszgpt/backend:latest
-            docker push $ECR_REGISTRY/uaszgpt/backend:${{ steps.tag.outputs.tag }}
-            docker push $ECR_REGISTRY/uaszgpt/backend:latest
+            docker build -t ${{ secrets.ECR_REGISTRY }}/uaszgpt/backend:${{ steps.tag.outputs.tag }} ./backend
+            docker tag ${{ secrets.ECR_REGISTRY }}/uaszgpt/backend:${{ steps.tag.outputs.tag }} ${{ secrets.ECR_REGISTRY }}/uaszgpt/backend:latest
+            docker push ${{ secrets.ECR_REGISTRY }}/uaszgpt/backend:${{ steps.tag.outputs.tag }}
+            docker push ${{ secrets.ECR_REGISTRY }}/uaszgpt/backend:latest
           else
             echo "Backend pas encore prêt — skip"
           fi
@@ -141,22 +142,23 @@ jobs:
       - name: Build et push frontend
         run: |
           if [ -f "frontend/package.json" ]; then
-            docker build -t $ECR_REGISTRY/uaszgpt/frontend:${{ steps.tag.outputs.tag }} ./frontend
-            docker tag $ECR_REGISTRY/uaszgpt/frontend:${{ steps.tag.outputs.tag }} $ECR_REGISTRY/uaszgpt/frontend:latest
-            docker push $ECR_REGISTRY/uaszgpt/frontend:${{ steps.tag.outputs.tag }}
-            docker push $ECR_REGISTRY/uaszgpt/frontend:latest
+            docker build -t ${{ secrets.ECR_REGISTRY }}/uaszgpt/frontend:${{ steps.tag.outputs.tag }} ./frontend
+            docker tag ${{ secrets.ECR_REGISTRY }}/uaszgpt/frontend:${{ steps.tag.outputs.tag }} ${{ secrets.ECR_REGISTRY }}/uaszgpt/frontend:latest
+            docker push ${{ secrets.ECR_REGISTRY }}/uaszgpt/frontend:${{ steps.tag.outputs.tag }}
+            docker push ${{ secrets.ECR_REGISTRY }}/uaszgpt/frontend:latest
           else
             echo "Frontend pas encore prêt — skip"
           fi
 
+      - name: Re-login ECR avant IA engine
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Build et push IA engine
         run: |
-          set -x  ← ajoute cette ligne en premier
-          docker build -t $ECR_REGISTRY/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }} ./ia-engine
-          docker tag $ECR_REGISTRY/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }} $ECR_REGISTRY/uaszgpt/ia-engine:latest
-          docker push $ECR_REGISTRY/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }}
-          docker push $ECR_REGISTRY/uaszgpt/ia-engine:latest
-
+          docker build -t ${{ secrets.ECR_REGISTRY }}/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }} ./ia-engine
+          docker tag ${{ secrets.ECR_REGISTRY }}/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }} ${{ secrets.ECR_REGISTRY }}/uaszgpt/ia-engine:latest
+          docker push ${{ secrets.ECR_REGISTRY }}/uaszgpt/ia-engine:${{ steps.tag.outputs.tag }}
+          docker push ${{ secrets.ECR_REGISTRY }}/uaszgpt/ia-engine:latest
   # ============================================
   # JOB 3 : DEPLOY STAGING
   # (uniquement sur la branche staging)
